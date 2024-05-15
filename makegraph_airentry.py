@@ -20,6 +20,8 @@ ylim_spec_ph = (-100, -20)
 ylim_spec_avg = (-140, -30)
 xlim_time = (-0.5,16.5)
 ylim_time = (-0.8,0.8)
+# FFTのデータが入っているディレクトリ名
+data_path = os.listdir('03_FFTdata')
 
 # fftのテキストデータからX軸，y軸の値のみ取り出すサブルーチン
 def data_trim(file_name):
@@ -79,10 +81,6 @@ def make_graph(x_y_list, xlabel, ylabel, xlim, ylim, title):
 
 
 """以下からメイン関数"""
-
-# FFTフォルダ配下のディレクトリを取得
-# top_path = ['X1', 'Y2Z']
-data_path = os.listdir('03_FFTdata')
 
 # 後の分類を楽にするために，dir_pathリストのすべての要素（文字列）を小文字に変換している
 # for s in リストはリストの要素を1個ずつ見ていく感じです
