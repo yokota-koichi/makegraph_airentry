@@ -6,10 +6,11 @@ GA87-1529-36で使用
 """
 
 import matplotlib.pyplot as plt
+import japanize_matplotlib
 import numpy as np
 import pandas as pd
 import os
-import re
+from tqdm import tqdm
 
 """ユーザーが変更するパラメータ"""
 # 試験回数
@@ -21,19 +22,21 @@ ylim_spec_avg = (-140, -30)
 xlim_time = (-0.5,16.5)
 ylim_time = (-0.8,0.8)
 # FFTのデータが入っているディレクトリ名
-data_path = os.listdir('03_FFTdata')
+folder_path = '04_FFTdata'
+
 
 # fftのテキストデータからX軸，y軸の値のみ取り出すサブルーチン
-def data_trim(file_name):
+def data_trim(fft_folderpath, file_list):
+    for file_name in file_list:
+        if "001" in file_name:
+            df_x1 = pd.read_csv('%s/%s' %(fft_folderpath, file_name),header=None, skiprows=16, encoding='shift-jis')
+        elif "002" in file_name:
+            df_x2 = pd.read_csv('%s/%s' %(fft_folderpath, file_name),header=None, skiprows=16, encoding='shift-jis')
+        elif "003" in file_name:
+            df_y2 = pd.read_csv('%s/%s' %(fft_folderpath, file_name),header=None, skiprows=16, encoding='shift-jis')
+        elif "004" in file_name:
+            df_z = pd.read_csv('%s/%s' %(fft_folderpath, file_name),header=None, skiprows=16, encoding='shift-jis')
 
-    if "001" in file_name:
-        df_x1 = pd.read_csv('03_FFTdata/%s' %file_name,header=None, skiprows=16, encoding='shift-jis')
-    elif "002" in file_name:
-        df_x2 = pd.read_csv('03_FFTdata/%s' %file_name,header=None, skiprows=16, encoding='shift-jis')
-    elif "003" in file_name:
-        df_y2 = pd.read_csv('03_FFTdata/%s' %file_name,header=None, skiprows=16, encoding='shift-jis')
-    elif "004" in file_name:
-        df_z = pd.read_csv('03_FFTdata/%s' %file_name,header=None, skiprows=16, encoding='shift-jis')
 
     df_list = [df_x1, df_x2, df_y2, df_z]
 
@@ -73,8 +76,9 @@ def make_graph(x_y_list, xlabel, ylabel, xlim, ylim, title):
 
     # グラフ全体のタイトル
     fig.suptitle(title)
+    fig.tight_layout()
 
-    plt.savefig("fig/" + title + ".pdf")
+    plt.savefig("05_レポート/01_fig/" + title + ".pdf")
     # closeとclfでグラフを閉じてメモリ開放．closeだけではメモリが完全に開放できないらしいからclfもしている．
     plt.close()
     plt.clf()
@@ -82,135 +86,47 @@ def make_graph(x_y_list, xlabel, ylabel, xlim, ylim, title):
 
 """以下からメイン関数"""
 
+# folder_pathの中身のパスをリストとして取得
 # 後の分類を楽にするために，dir_pathリストのすべての要素（文字列）を小文字に変換している
 # for s in リストはリストの要素を1個ずつ見ていく感じです
-data_path = [s.lower() for s in data_path ]
+data_path = [s.lower() for s in os.listdir(folder_path) ]
 
-
-for i in num_times:
+for i in tqdm(range(num_times)):
+    title_dict = {"in" : "吸気口", "out" : "排気口", "bf" : "試験前", "af" : "試験後", "n%s" %str(i+1).zfill(2) : "%s回目" %str(i+1).zfill(2), "acc" : "加速ピークホールド",
+                "nor" : "定格スペクトル", "air" : "大気突入時間波形", "brk" : "減速ピークホールド"}
 
     # dir_pathからtxtファイル名をリストで取得し，その中からn回目のデータを取り出す
-    times_file_path = [s for s in data_path if 'n%d' %i in s or "bf" in s or "af" in s]
+    times_file_path = [s for s in data_path if 'n%s' %str(i+1).zfill(2) in s or "bf" in s or "af" in s]
 
-    for file_name in times_file_path:
-        if "in" in file_name:
-            # 加速ピークホールドを処理
-            if "acc" in file_name:
-                if "bf" in file_name:
-                    title = "吸気口 試験前 加速ピークホールド"
-                elif "af" in file_name:
-                    title = "吸気口 試験後 加速ピークホールド"
-                else:
-                    title = "吸気口 %d回目 加速ピークホールド" %i+1
 
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
+    for direction in ["in", "out"]:
+        for when in ["bf", "n%s" %str(i+1).zfill(2), "af"]:
+            for mode in ["acc", "nor" , "brk", "air"]:
+                    if ((when == "bf" and mode == "air") or (when == "af" and mode == "air") or (when == "n%s" %str(i+1).zfill(2) and mode == "brk")):
+                        continue
+                    title = title_dict[direction] + "_" + title_dict[when] + "_" + title_dict[mode]
+                    file_list = [s for s in times_file_path if direction in s and when in s and mode in s]
+                    if mode == "air":
+                        xlabel = "Time [s]"
+                        ylabel = "Mag [V]"
+                        xlim = xlim_time
+                        ylim = ylim_time
+                    elif mode == "nor":
+                        xlabel = "Frequency [Hz]"
+                        ylabel = "Mag [dBV]"
+                        xlim = xlim_spec
+                        ylim = ylim_spec_avg
+                    else:
+                        xlabel = "Frequency [Hz]"
+                        ylabel = "Mag [dBV]"
+                        xlim = xlim_spec
+                        ylim = ylim_spec_ph
+                    # 横軸，縦軸の数値のみ取り出す
+                    x_y_list = data_trim(folder_path,file_list)
+                    # グラフ作成
+                    make_graph(x_y_list,xlabel, ylabel ,xlim, ylim, title)
 
-            # 定格スペクトルを処理
-            elif "nor" in file_name:
-                if "bf" in file_name:
-                    title = "吸気口 試験前 定格スペクトル"
-                elif "af" in file_name:
-                    title = "吸気口 試験後 定格スペクトル"
-                else:
-                    title = "吸気口 %d回目 定格スペクトル" %i+1
 
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
 
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
-
-            # 減速ピークホールドを処理
-            elif "nor" in file_name:
-                if "bf" in file_name:
-                    title = "吸気口 試験前 減速ピークホールド"
-                elif "af" in file_name:
-                    title = "吸気口 試験後 減速ピークホールド"
-                else:
-                    title = "吸気口 %d回目 減速ピークホールド" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
-
-            # 時間波形を処理
-            elif "air" in file_name:
-                if "bf" in file_name:
-                    title = "吸気口 試験前 大気突入 時間波形"
-                elif "af" in file_name:
-                    title = "吸気口 試験後 大気突入 時間波形"
-                else:
-                    title = "吸気口 %d回目 大気突入 時間波形" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-
-                # グラフ作成
-                make_graph(x_y_list,"Time [s]", "Mag [V]" ,xlim_spec, ylim_spec_ph, title)
-
-        elif "out" in file_name:
-            # 加速ピークホールドを処理
-            if "acc" in file_name:
-                if "bf" in file_name:
-                    title = "排気口 試験前 加速ピークホールド"
-                elif "af" in file_name:
-                    title = "排気口 試験後 加速ピークホールド"
-                else:
-                    title = "排気口 %d回目 加速ピークホールド" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
-
-            # 定格スペクトルを処理
-            elif "nor" in file_name:
-                if "bf" in file_name:
-                    title = "排気口 試験前 定格スペクトル"
-                elif "af" in file_name:
-                    title = "排気口 試験後 定格スペクトル"
-                else:
-                    title = "排気口 %d回目 定格スペクトル" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
-
-            # 減速ピークホールドを処理
-            elif "nor" in file_name:
-                if "bf" in file_name:
-                    title = "排気口 試験前 減速ピークホールド"
-                elif "af" in file_name:
-                    title = "排気口 試験後 減速ピークホールド"
-                else:
-                    title = "排気口 %d回目 減速ピークホールド" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-
-                # グラフ作成
-                make_graph(x_y_list,"Frequency [Hz]", "Mag [dBV]" ,xlim_spec, ylim_spec_ph, title)
-
-            # 時間波形を処理
-            elif "air" in file_name:
-                if "bf" in file_name:
-                    title = "排気口 試験前 大気突入 時間波形"
-                elif "af" in file_name:
-                    title = "排気口 試験後 大気突入 時間波形"
-                else:
-                    title = "排気口 %d回目 大気突入 時間波形" %i+1
-
-                # 横軸，縦軸の数値のみ取り出す
-                x_y_list = data_trim(file_name)
-
-                # グラフ作成
-                make_graph(x_y_list,"Time [s]", "Mag [V]" ,xlim_spec, ylim_spec_ph, title)
 
 
