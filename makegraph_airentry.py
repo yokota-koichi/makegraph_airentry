@@ -22,8 +22,9 @@ ylim_spec_avg = (-140, -30)
 xlim_time = (-0.5,16.5)
 ylim_time = (-0.8,0.8)
 # FFTのデータが入っているディレクトリ名
-folder_path = '04_FFTdata'
-
+folder_path = r"\\172.31.120.33\産業機械事業部tmpbu\TMP\k_共用\e_登録文書\g_GAxx\8_GA8x-xxxx_新採番(W1)\7_GA87-xxxx_技術文書(社内ﾚﾎﾟｰﾄ)\GA87-2258_ステータ4段目生成物堆積対策水平展開\01_5305\GA87-2258-05_ステータ4段目生成物堆積対策水平展開_5305_大気突入試験\05_FFTdata"
+# グラフの保存先パス
+savepath = r"\\172.31.120.33\産業機械事業部tmpbu\TMP\k_共用\e_登録文書\g_GAxx\8_GA8x-xxxx_新採番(W1)\7_GA87-xxxx_技術文書(社内ﾚﾎﾟｰﾄ)\GA87-2258_ステータ4段目生成物堆積対策水平展開\01_5305\GA87-2258-05_ステータ4段目生成物堆積対策水平展開_5305_大気突入試験\06_レポート\01_fig"
 
 # fftのテキストデータからX軸，y軸の値のみ取り出すサブルーチン
 def data_trim(fft_folderpath, file_list):
@@ -78,7 +79,7 @@ def make_graph(x_y_list, xlabel, ylabel, xlim, ylim, title):
     fig.suptitle(title)
     fig.tight_layout()
 
-    plt.savefig("05_レポート/01_fig/" + title + ".pdf")
+    plt.savefig(savepath +  "/" + title + ".jpg")
     # closeとclfでグラフを閉じてメモリ開放．closeだけではメモリが完全に開放できないらしいからclfもしている．
     plt.close()
     plt.clf()
